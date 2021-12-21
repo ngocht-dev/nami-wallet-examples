@@ -78,6 +78,25 @@ export default function App() {
     }
   };
 
+  const getUtxos = async () => {
+    try {
+      if (!connected) {
+        await connect();
+      }
+      setErr(null);
+      setRes(null);
+      const loader = await cardano();
+
+      const response = await window.cardano.getUtxos();
+      console.log("getting used addresses response:>>", response);
+      setRes(JSON.stringify(response));
+      
+    } catch (error) {
+      console.error("getting utxos has an error:>>", error);
+      setErr(error);
+    }
+  };
+
   const getBalance = async () => {
     // get balance of Nami Wallet
     try {
@@ -169,6 +188,10 @@ export default function App() {
             <button className={`button btn-light`} onClick={getBalance}>
               {" "}
               Get Your Balance and NFTs{" "}
+            </button>
+            <button className={`button btn-light`} onClick={getUtxos}>
+              {" "}
+              Get Utxos{" "}
             </button>
           </div>
         </div>
