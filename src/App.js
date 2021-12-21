@@ -14,13 +14,36 @@ const hexToAscii = (hex) => {
   return str;
 };
 
+const convertHexToBench32 = (hex) => {
+  const addressHex = Buffer.from(hex, "hex");
+
+  const address = CardanoWasm.BaseAddress.from_address(
+    CardanoWasm.Address.from_bytes(addressHex)
+  )
+    .to_address()
+    .to_bech32();
+  return address;
+};
+
+var CardanoWasm = null;
+const makeLoader = async () => {
+  CardanoWasm = await cardano();
+};
+
+makeLoader();
+
 export default function App() {
   const [connected, setConnected] = useState();
   const [address, setAddress] = useState();
+  //   const [changeAddress, setChangeAddress] = useState();
+  const [unusedAddress, setUnusedAddress] = useState();
   const [nfts, setNfts] = useState([]);
   const [balance, setBalance] = useState();
-  const [err, setErr] = useState();
-  const [res, setRes] = useState();
+  const [tx, setTx] = useState();
+  const [utxos, setUtxos] = useState();
+  const [signature, setSignature] = useState();
+  const [error, setError] = useState();
+  const [response, setResponse] = useState();
 
   useEffect(() => {
     checkConnection();
@@ -35,46 +58,32 @@ export default function App() {
   };
   const connect = async () => {
     // Connects nami wallet to current website
-    setRes(null);
-    setErr(null);
     await window.cardano
       .enable()
       .then((result) => {
         console.log("enable result:>>", JSON.stringify(result));
-        setRes(JSON.stringify(result));
+        setResponse(JSON.stringify(result));
         setConnected(result);
       })
       .catch((e) => {
         console.error(e);
-        setErr(e);
+        setError(JSON.stringify(e));
       });
   };
 
-  const getAddress = async () => {
+  const getUsedAddresses = async () => {
     // retrieve address of nami wallet
     try {
       if (!connected) {
         await connect();
       }
-      setErr(null);
-      setRes(null);
-      const loader = await cardano();
-
       const response = await window.cardano.getUsedAddresses();
       console.log("getting used addresses response:>>", response);
-      setRes(JSON.stringify(response));
-      const addressHex = Buffer.from(response[0], "hex");
-
-      const address = loader.BaseAddress.from_address(
-        loader.Address.from_bytes(addressHex)
-      )
-        .to_address()
-        .to_bech32();
-
-      setAddress(address);
-    } catch (error) {
-      console.error("get address has an error:>>", error);
-      setErr(error);
+      setResponse(JSON.stringify(response));
+      setAddress(convertHexToBench32(response[0]));
+    } catch (e) {
+      console.error("get address has an error:>>", e);
+      setError(JSON.stringify(e));
     }
   };
 
@@ -83,17 +92,65 @@ export default function App() {
       if (!connected) {
         await connect();
       }
-      setErr(null);
-      setRes(null);
-      const loader = await cardano();
-
       const response = await window.cardano.getUtxos();
       console.log("getting used addresses response:>>", response);
-      setRes(JSON.stringify(response));
-      
-    } catch (error) {
-      console.error("getting utxos has an error:>>", error);
-      setErr(error);
+      setUtxos(response);
+      setResponse(JSON.stringify(response));
+    } catch (e) {
+      console.error("getting utxos has an error:>>", e);
+      setError(JSON.stringify(e));
+    }
+  };
+
+  const getChangeAddress = async () => {
+    try {
+      if (!connected) {
+        await connect();
+      }
+      const response = await window.cardano.getChangeAddress();
+      setAddress(convertHexToBench32(response));
+      setResponse(JSON.stringify(response));
+    } catch (e) {
+      console.error("getting change address has an error:>>", e);
+      setError(JSON.stringify(e));
+    }
+  };
+
+  const signTx = async () => {
+    try {
+      if (!connected) {
+        await connect();
+      }
+      if (!utxos) {
+        return alert("Should request utxos first");
+      }
+
+      if (!address) {
+        return alert("Should request change address first");
+      }
+
+      const tx =
+        "a40081825820259dac4a67cc8eba0494e22781e0d5ed5b293485fd648ba64ebe755a70b6394700018282583901fc9f23dd22a85f022de47936457333e74bb8aec0e9c9ade2104ca5a7e296d940f1326c737fb50f6fa3f313a0948bbc3e5487c91e42d3be181a000f4240825839010c31c8c926e58f07854d8b408dc567a01c56e3b2640a0dc58fab47ddbd75f763c938908e3546bd392608546345e64344a46c3511f061a8a01a001960aa021a00029151031a02e45ff9";
+      const response = await window.cardano.signTx(tx);
+      setResponse(JSON.stringify(response));
+    } catch (e) {
+      console.error("signing transaction has an error:>>", e);
+      setError(JSON.stringify(e));
+    }
+  };
+
+  const getUnusedAddresses = async () => {
+    try {
+      console.log("get unused addresses....");
+      if (!connected) {
+        await connect();
+      }
+      const response = await window.cardano.getUnusedAddresses();
+      setUnusedAddress(response);
+      setResponse(JSON.stringify(response));
+    } catch (e) {
+      console.error("getting unused address has an error:>>", e);
+      setError(JSON.stringify(e));
     }
   };
 
@@ -104,13 +161,12 @@ export default function App() {
         await connect();
       }
 
-      setErr(null);
-      setRes(null);
+      setError(null);
+      setResponse(null);
 
-      const loader = await cardano();
       const valueCBOR = await window.cardano.getBalance();
-      setRes(JSON.stringify(valueCBOR));
-      const value = loader.Value.from_bytes(Buffer.from(valueCBOR, "hex"));
+      setResponse(JSON.stringify(valueCBOR));
+      const value = CardanoWasm.Value.from_bytes(Buffer.from(valueCBOR, "hex"));
       const lovelace = parseInt(value.coin().to_str());
 
       const nfts = [];
@@ -145,9 +201,9 @@ export default function App() {
 
       setBalance(lovelace);
       setNfts(nfts);
-    } catch (error) {
-      console.error("get balance has an error:>>", error);
-      setErr(error);
+    } catch (e) {
+      console.error("get balance has an error:>>", e);
+      setError(JSON.stringify(e));
     }
   };
 
@@ -181,26 +237,46 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <button className={`button btn-light`} onClick={getAddress}>
-              {" "}
-              Get Your Address{" "}
-            </button>
             <button className={`button btn-light`} onClick={getBalance}>
               {" "}
               Get Your Balance and NFTs{" "}
+            </button>
+            <button className={`button btn-light`} onClick={getUnusedAddresses}>
+              {" "}
+              Get Unused Addresses{" "}
+            </button>
+            <button className={`button btn-light`} onClick={getUsedAddresses}>
+              {" "}
+              Get Used Addresses{" "}
+            </button>
+            <button className={`button btn-light`} onClick={getChangeAddress}>
+              {" "}
+              Get Change Address{" "}
             </button>
             <button className={`button btn-light`} onClick={getUtxos}>
               {" "}
               Get Utxos{" "}
             </button>
+            <button className={`button btn-light`} onClick={getUtxos}>
+              {" "}
+              Submit Tx{" "}
+            </button>
+            <button className={`button btn-light`} onClick={signTx}>
+              {" "}
+              Sign Tx{" "}
+            </button>
+            <button className={`button btn-light`} onClick={getUtxos}>
+              {" "}
+              Sign Data{" "}
+            </button>
           </div>
         </div>
         <div
           className={`w-full mt-8 flex justify-start break-all p-4 border border-solid border-transparent rounded ${
-            res ? "success" : "error"
+            response ? "success" : "error"
           }`}
         >
-          {res ? res : err}
+          {response ? response : error}
         </div>
       </div>
     </>
