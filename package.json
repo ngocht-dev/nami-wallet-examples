@@ -17,6 +17,7 @@
     "@emotion/react": "^11.4.1",
     "@emotion/styled": "^11.3.0",
     "babel-loader": "^8.1.0",
+    "buffer": "^6.0.3",
     "css-loader": "^6.3.0",
     "file-loader": "^6.2.0",
     "react": "^17.0.2",
@@ -27,21 +28,21 @@
     "web-vitals": "^1.1.2",
     "webpack": "^5.3.2",
     "webpack-cli": "^4.1.0",
-    "webpack-dev-server": "^3.11.0",
-    "buffer": "^6.0.3"
+    "webpack-dev-server": "^3.11.0"
   },
   "dependencies": {
     "@babel/plugin-transform-runtime": "^7.15.8",
     "@babel/runtime": "^7.15.4",
+    "@emurgo/cardano-serialization-lib-browser": "^9.1.2",
     "@emurgo/cip14-js": "^3.0.1",
     "@headlessui/react": "^1.4.1",
     "autoprefixer": "^10.3.4",
+    "buffer": "^6.0.3",
     "fs-extra": "^10.0.0",
     "html-webpack-plugin": "^5.5.0",
     "lodash.clonedeep": "^4.5.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "buffer": "^6.0.3",
     "regenerator-runtime": "^0.13.9",
     "style-loader": "^3.3.0",
     "svg-url-loader": "^7.1.1"
