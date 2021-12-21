@@ -35,27 +35,34 @@ export default function App() {
   };
   const connect = async () => {
     // Connects nami wallet to current website
+    setRes(null);
+    setErr(null);
     await window.cardano
       .enable()
       .then((result) => {
         console.log("enable result:>>", JSON.stringify(result));
+        setRes(JSON.stringify(result));
         setConnected(result);
       })
-      .catch((e) => console.log(e));
+      .catch((e) => {
+        console.error(e);
+        setErr(e);
+      });
   };
 
   const getAddress = async () => {
     // retrieve address of nami wallet
     try {
-      setErr(null);
-      setRes(null);
       if (!connected) {
         await connect();
       }
+      setErr(null);
+      setRes(null);
       const loader = await cardano();
 
       const response = await window.cardano.getUsedAddresses();
-      setRes(response);
+      console.log("getting used addresses response:>>", response);
+      setRes(JSON.stringify(response));
       const addressHex = Buffer.from(response[0], "hex");
 
       const address = loader.BaseAddress.from_address(
@@ -73,46 +80,56 @@ export default function App() {
 
   const getBalance = async () => {
     // get balance of Nami Wallet
-    if (!connected) {
-      await connect();
-    }
-    const loader = await cardano();
-    const valueCBOR = await window.cardano.getBalance();
-    const value = loader.Value.from_bytes(Buffer.from(valueCBOR, "hex"));
-    const lovelace = parseInt(value.coin().to_str());
+    try {
+      if (!connected) {
+        await connect();
+      }
 
-    const nfts = [];
-    if (value.multiasset()) {
-      const multiAssets = value.multiasset().keys();
-      for (let j = 0; j < multiAssets.len(); j++) {
-        const policy = multiAssets.get(j);
-        const policyAssets = value.multiasset().get(policy);
-        const assetNames = policyAssets.keys();
-        for (let k = 0; k < assetNames.len(); k++) {
-          const policyAsset = assetNames.get(k);
-          const quantity = policyAssets.get(policyAsset);
-          const asset =
-            Buffer.from(policy.to_bytes(), "hex").toString("hex") +
-            Buffer.from(policyAsset.name(), "hex").toString("hex");
-          const _policy = asset.slice(0, 56);
-          const _name = asset.slice(56);
-          const fingerprint = new AssetFingerprint(
-            Buffer.from(_policy, "hex"),
-            Buffer.from(_name, "hex")
-          ).fingerprint();
-          nfts.push({
-            unit: asset,
-            quantity: quantity.to_str(),
-            policy: _policy,
-            name: hexToAscii(_name),
-            fingerprint,
-          });
+      setErr(null);
+      setRes(null);
+
+      const loader = await cardano();
+      const valueCBOR = await window.cardano.getBalance();
+      setRes(JSON.stringify(valueCBOR));
+      const value = loader.Value.from_bytes(Buffer.from(valueCBOR, "hex"));
+      const lovelace = parseInt(value.coin().to_str());
+
+      const nfts = [];
+      if (value.multiasset()) {
+        const multiAssets = value.multiasset().keys();
+        for (let j = 0; j < multiAssets.len(); j++) {
+          const policy = multiAssets.get(j);
+          const policyAssets = value.multiasset().get(policy);
+          const assetNames = policyAssets.keys();
+          for (let k = 0; k < assetNames.len(); k++) {
+            const policyAsset = assetNames.get(k);
+            const quantity = policyAssets.get(policyAsset);
+            const asset =
+              Buffer.from(policy.to_bytes(), "hex").toString("hex") +
+              Buffer.from(policyAsset.name(), "hex").toString("hex");
+            const _policy = asset.slice(0, 56);
+            const _name = asset.slice(56);
+            const fingerprint = new AssetFingerprint(
+              Buffer.from(_policy, "hex"),
+              Buffer.from(_name, "hex")
+            ).fingerprint();
+            nfts.push({
+              unit: asset,
+              quantity: quantity.to_str(),
+              policy: _policy,
+              name: hexToAscii(_name),
+              fingerprint,
+            });
+          }
         }
       }
-    }
 
-    setBalance(lovelace);
-    setNfts(nfts);
+      setBalance(lovelace);
+      setNfts(nfts);
+    } catch (error) {
+      console.error("get balance has an error:>>", error);
+      setErr(error);
+    }
   };
 
   return (
